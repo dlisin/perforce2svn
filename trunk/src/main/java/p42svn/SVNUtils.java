@@ -27,7 +27,7 @@ public final class SVNUtils {
         return result;
     }
 
-    public static void svnDelete(OutputStream outputStream, String path/*, ConcurrentMap<String, Integer> dirUsage*/) throws Exception {
+    public static void svnDelete(OutputStream outputStream, String path) throws Exception {
         PrintWriter printWriter = new PrintWriter(outputStream);
         printWriter.print("Node-path: " + path + "\n");
         printWriter.print("Node-action: delete\n");

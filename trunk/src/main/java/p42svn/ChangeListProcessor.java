@@ -7,6 +7,8 @@ import com.perforce.p4java.server.IServer;
 
 import java.util.List;
 
+import static p42svn.Utils.*;
+
 /**
  * @author Pavel Belevich
  *         Date: 5/14/11
@@ -29,7 +31,7 @@ public class ChangeListProcessor {
             IChangelist changeList = getChangelistDetails(changeListSummary.getId());
 
             List<IFileSpec> allFileSpecs = changeList.getFiles(true);
-            List<IFileSpec> filteredFileSpecs = Utils.filterWantedFiles(p42SVN.getBranches(), allFileSpecs);
+            List<IFileSpec> filteredFileSpecs = filterWantedFiles(p42SVN.getBranches(), allFileSpecs);
             if (!filteredFileSpecs.isEmpty()) {
                 int revisionId = p42SVN.getRevisionManager().createRevisionIdForChangeListId(changeList.getId());
                 p42SVN.getEventDispatcher().handleChangeList(changeList);
