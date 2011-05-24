@@ -205,7 +205,7 @@ public class SVNListener implements Listener {
         for (String deletedFile : toDelete) {
             File file = new File(changeListDumpDir, String.valueOf(++fileNumber));
             OutputStream outputStream = new FileOutputStream(file);
-            svnDelete(outputStream, deletedFile/*, dirUsage*/);
+            SVNUtils.svnDelete(outputStream, deletedFile);
         }
     }
 
@@ -502,7 +502,7 @@ public class SVNListener implements Listener {
         );
         files.put(file, new ChangeInfo(path, "Delete"));
         OutputStream outputStream = new FileOutputStream(file);
-        svnDelete(outputStream, path);
+        SVNUtils.svnDelete(outputStream, path);
         outputStream.close();
     }
 
