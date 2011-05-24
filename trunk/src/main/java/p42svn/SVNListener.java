@@ -15,6 +15,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static com.perforce.p4java.core.file.FileAction.*;
+import static p42svn.ConcurrentMapUtils.*;
+import static p42svn.SVNUtils.*;
 
 /**
  * @author Pavel Belevich
@@ -105,7 +107,7 @@ public class SVNListener implements Listener {
                 new File(changeListDumpDir, String.valueOf(0))
         );
         PrintWriter printWriter = new PrintWriter(outputStream);
-        String propertiesText = Utils.svnPropertiesToString(properties);
+        String propertiesText = svnPropertiesToString(properties);
         int propertiesLength = propertiesText.length() + 1; //TODO ???
         printWriter.print("Revision-number: " + revision + "\n");
         printWriter.print("Prop-content-length: " + propertiesLength + "\n");
@@ -164,11 +166,11 @@ public class SVNListener implements Listener {
         svnDeleteEmptyParentDirs();
 
         Writer directoriesWriter = new FileWriter(new File(p42SVN.getChangelistsDumpDirectoryPath(), "directories"));
-        Utils.writeMap(directoriesWriter, this.directories);
+        MapUtils.writeMap(directoriesWriter, this.directories);
         directoriesWriter.close();
 
         Writer filesWriter = new FileWriter(new File(p42SVN.getChangelistsDumpDirectoryPath(), "files"));
-        Utils.writeMapChangeInfo(filesWriter, this.files);
+        MapUtils.writeMapChangeInfo(filesWriter, this.files);
         filesWriter.close();
 
     }
@@ -203,7 +205,7 @@ public class SVNListener implements Listener {
         for (String deletedFile : toDelete) {
             File file = new File(changeListDumpDir, String.valueOf(++fileNumber));
             OutputStream outputStream = new FileOutputStream(file);
-            Utils.svnDelete(outputStream, deletedFile/*, dirUsage*/);
+            svnDelete(outputStream, deletedFile/*, dirUsage*/);
         }
     }
 
@@ -211,12 +213,12 @@ public class SVNListener implements Listener {
 
         Reader directoriesReader = new FileReader(new File(p42SVN.getChangelistsDumpDirectoryPath(), "directories"));
         directories.clear();
-        directories = Utils.readMap(directoriesReader, directories);
+        directories = MapUtils.readMap(directoriesReader, directories);
         directoriesReader.close();
 
         Reader filesReader = new FileReader(new File(p42SVN.getChangelistsDumpDirectoryPath(), "files"));
         files.clear();
-        files = Utils.readMapChangeInfo(filesReader, files);
+        files = MapUtils.readMapChangeInfo(filesReader, files);
         filesReader.close();
 
         File changeListsDumpDirectory = new File(p42SVN.getChangelistsDumpDirectoryPath());
@@ -265,22 +267,22 @@ public class SVNListener implements Listener {
 
                 String dirPath = directories.get(partFile);
                 if (dirPath != null) {
-                    allow = Utils.getAndInc(dirStatuses, dirPath) == 0;
+                    allow = getAndInc(dirStatuses, dirPath) == 0;
                 }
 
                 ChangeInfo changeInfo = files.get(partFile);
                 if (changeInfo != null) {
-                    int status = Utils.get(fileStatuses, changeInfo.getFilePath());
+                    int status = get(fileStatuses, changeInfo.getFilePath());
                     if ("Add".equals(changeInfo.getAction()) || "Add Copy".equals(changeInfo.getAction())) {
                         if (status == 0) {
-                            Utils.inc(fileStatuses, changeInfo.getFilePath());
+                            inc(fileStatuses, changeInfo.getFilePath());
                             allow = true;
                         } else {
                             allow = false;
                         }
                     } else if ("Delete".equals(changeInfo.getAction())) {
                         if (status == 1) {
-                            Utils.dec(fileStatuses, changeInfo.getFilePath());
+                            dec(fileStatuses, changeInfo.getFilePath());
                             allow = true;
                         } else {
                             allow = false;
@@ -389,16 +391,12 @@ public class SVNListener implements Listener {
 
     private void svnAddDir(int changeListId, String path, Properties properties) throws Exception {
         File file = new File(changelistDumpDirsByChangeListId.get(changeListId),
-                String.valueOf(Utils.getAndInc(partByChangeListId, changeListId, 1))
+                String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
         directories.put(file, path);
         OutputStream outputStream = new FileOutputStream(file);
         PrintWriter printWriter = new PrintWriter(outputStream);
-//        String parentDirectory = Utils.getParentDirectory(path);
-//        if (parentDirectory != null) {
-//            Utils.inc(dirUsage, parentDirectory);
-//        }
-        String propertiesText = Utils.svnPropertiesToString(properties);
+        String propertiesText = svnPropertiesToString(properties);
         int propertiesLength = propertiesText.length() + 1; //TODO ???
         printWriter.print("Node-path: " + path + "\n");
         printWriter.print("Node-kind: dir\n");
@@ -413,7 +411,7 @@ public class SVNListener implements Listener {
 
     public void svnAddFile(int changeListId, String path, Properties properties, byte[] text) throws Exception {
         File file = new File(changelistDumpDirsByChangeListId.get(changeListId),
-                String.valueOf(Utils.getAndInc(partByChangeListId, changeListId, 1))
+                String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
 
         files.put(file, new ChangeInfo(path, "Add"));
@@ -424,7 +422,7 @@ public class SVNListener implements Listener {
 //        if (parentDirectory != null) {
 //            Utils.inc(dirUsage, parentDirectory);
 //        }
-        String propertiesText = Utils.svnPropertiesToString(properties);
+        String propertiesText = svnPropertiesToString(properties);
         int propertiesLength = propertiesText.length() + 1; //TODO ???
         int textLength = text.length;
         String textMD5 = md5(text);
@@ -459,12 +457,12 @@ public class SVNListener implements Listener {
 
     public void svnEditFile(int changeListId, String path, Properties properties, byte[] text) throws Exception {
         File file = new File(changelistDumpDirsByChangeListId.get(changeListId),
-                String.valueOf(Utils.getAndInc(partByChangeListId, changeListId, 1))
+                String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
         files.put(file, new ChangeInfo(path, "Edit"));
         OutputStream outputStream = new FileOutputStream(file);
         PrintWriter printWriter = new PrintWriter(outputStream);
-        String propertiesText = Utils.svnPropertiesToString(properties);
+        String propertiesText = svnPropertiesToString(properties);
         int propertiesLength = propertiesText.length() + 1; //TODO ???
         int textLength = text.length;
         String textMD5 = md5(text);
@@ -500,17 +498,17 @@ public class SVNListener implements Listener {
 
     public void svnDelete(int changeListId, String path) throws Exception {
         File file = new File(changelistDumpDirsByChangeListId.get(changeListId),
-                String.valueOf(Utils.getAndInc(partByChangeListId, changeListId, 1))
+                String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
         files.put(file, new ChangeInfo(path, "Delete"));
         OutputStream outputStream = new FileOutputStream(file);
-        Utils.svnDelete(outputStream, path);
+        svnDelete(outputStream, path);
         outputStream.close();
     }
 
     public void svnAddCopy(int changeListId, String path, String fromPath, int fromRevision) throws Exception {
         File file = new File(changelistDumpDirsByChangeListId.get(changeListId),
-                String.valueOf(Utils.getAndInc(partByChangeListId, changeListId, 1))
+                String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
         files.put(file, new ChangeInfo(path, "Add Copy"));
         OutputStream outputStream = new FileOutputStream(file);
@@ -526,7 +524,7 @@ public class SVNListener implements Listener {
 
     public void svnReplaceCopy(int changeListId, String path, String fromPath, int fromRevision) throws Exception {
         File file = new File(changelistDumpDirsByChangeListId.get(changeListId),
-                String.valueOf(Utils.getAndInc(partByChangeListId, changeListId, 1))
+                String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
         files.put(file, new ChangeInfo(path, "Replace Copy"));
         OutputStream outputStream = new FileOutputStream(file);
@@ -608,7 +606,7 @@ public class SVNListener implements Listener {
                 continue;
             } else {
 //                Utils.inc(dirSeen, parent);
-                if (Utils.getAndInc(localDirSeen, parent) > 0) {
+                if (getAndInc(localDirSeen, parent) > 0) {
                     continue;
                 }
             }
