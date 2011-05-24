@@ -145,14 +145,17 @@ public class SVNListener implements Listener {
     private String getSVNPathCaseInsensitive(String depotPathString) {
         String svnPath = Utils.depotToSVNPath(p42SVN.getBranches(), depotPathString);
 
-        String result = paths.get(svnPath.toLowerCase());
-        if (result == null) {
-            result = paths.putIfAbsent(svnPath.toLowerCase(), svnPath);
+        if (svnPath != null) {
+            String result = paths.get(svnPath.toLowerCase());
             if (result == null) {
-                result = svnPath;
+                result = paths.putIfAbsent(svnPath.toLowerCase(), svnPath);
+                if (result == null) {
+                    result = svnPath;
+                }
             }
+            svnPath = result;
         }
-        svnPath = result;
+
         return svnPath;
     }
 
