@@ -287,11 +287,15 @@ public class SVNListener implements Listener {
                         } else {
                             allow = false;
                         }
+                    } else if ("Edit".equals(changeInfo.getAction()) || "Replace Copy".equals(changeInfo.getAction())) {
+                        if (status == 1) {
+                            allow = true;
+                        } else {
+                            allow = false;
+                        }
                     }
                 }
 
-
-//                if (dirPath == null || Utils.getAndInc(dirStatuses, dirPath) == 0) {
                 if (allow) {
                     byte[] bytes = IOUtils.toByteArray(new FileInputStream(partFile));
                     outputStream.write(bytes);
