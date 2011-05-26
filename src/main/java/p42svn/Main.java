@@ -75,7 +75,7 @@ public class Main {
         try {
             CommandLine cmd = parser.parse(options, args);
 
-            if (cmd.hasOption("help") || cmd.getArgs().length == 0) {
+            if (cmd.hasOption("help") || args.length == 0) {
                 HelpFormatter formatter = new HelpFormatter();
                 formatter.printHelp("p42svn", options);
             }
