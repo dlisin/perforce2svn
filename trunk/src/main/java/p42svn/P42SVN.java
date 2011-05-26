@@ -5,6 +5,7 @@ import com.perforce.p4java.core.file.FileSpecBuilder;
 import com.perforce.p4java.server.IServer;
 
 import java.io.File;
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -24,6 +25,7 @@ public class P42SVN {
     private boolean convertEOL;
 
     private TimeZone timeZone = TimeZone.getDefault();
+    private Charset charset;
 
     private String changelistsDumpDirectoryPath = "tmp";
     private String dumpFileName = "dump";
@@ -172,6 +174,14 @@ public class P42SVN {
 
     public void setTimeZone(TimeZone timeZone) {
         this.timeZone = timeZone;
+    }
+
+    public Charset getCharset() {
+        return charset;
+    }
+
+    public void setCharset(Charset charset) {
+        this.charset = charset;
     }
 
     public FilesManager getFilesManager() {

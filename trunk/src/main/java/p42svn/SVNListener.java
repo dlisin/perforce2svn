@@ -106,9 +106,9 @@ public class SVNListener implements Listener {
         OutputStream outputStream = new FileOutputStream(
                 new File(changeListDumpDir, String.valueOf(0))
         );
-        PrintWriter printWriter = new PrintWriter(outputStream);
-        String propertiesText = svnPropertiesToString(properties);
-        int propertiesLength = propertiesText.length() + 1; //TODO ???
+        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
+        String propertiesText = svnPropertiesToString(properties, p42SVN.getCharset());
+        int propertiesLength = propertiesText.getBytes(p42SVN.getCharset()).length + 1;
         printWriter.print("Revision-number: " + revision + "\n");
         printWriter.print("Prop-content-length: " + propertiesLength + "\n");
         printWriter.print("Content-length: " + propertiesLength + "\n");
@@ -206,7 +206,8 @@ public class SVNListener implements Listener {
         for (String deletedFile : toDelete) {
             File file = new File(changeListDumpDir, String.valueOf(++fileNumber));
             OutputStream outputStream = new FileOutputStream(file);
-            SVNUtils.svnDelete(outputStream, deletedFile);
+            PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
+            SVNUtils.svnDelete(printWriter, deletedFile);
         }
     }
 
@@ -224,7 +225,7 @@ public class SVNListener implements Listener {
 
         File changeListsDumpDirectory = new File(p42SVN.getChangelistsDumpDirectoryPath());
         OutputStream outputStream = new FileOutputStream(p42SVN.getDumpFileName());
-        PrintWriter printWriter = new PrintWriter(outputStream);
+        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
         printWriter.print("SVN-fs-dump-format-version: 1\n\n");
         printWriter.flush();
 
@@ -400,9 +401,9 @@ public class SVNListener implements Listener {
         );
         directories.put(file, path);
         OutputStream outputStream = new FileOutputStream(file);
-        PrintWriter printWriter = new PrintWriter(outputStream);
-        String propertiesText = svnPropertiesToString(properties);
-        int propertiesLength = propertiesText.length() + 1; //TODO ???
+        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
+        String propertiesText = svnPropertiesToString(properties, p42SVN.getCharset());
+        int propertiesLength = propertiesText.getBytes(p42SVN.getCharset()).length + 1; //TODO ???
         printWriter.print("Node-path: " + path + "\n");
         printWriter.print("Node-kind: dir\n");
         printWriter.print("Node-action: add\n");
@@ -422,13 +423,13 @@ public class SVNListener implements Listener {
         files.put(file, new ChangeInfo(path, "Add"));
 
         OutputStream outputStream = new FileOutputStream(file);
-        PrintWriter printWriter = new PrintWriter(outputStream);
+        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
 //        String parentDirectory = Utils.getParentDirectory(path);
 //        if (parentDirectory != null) {
 //            Utils.inc(dirUsage, parentDirectory);
 //        }
-        String propertiesText = svnPropertiesToString(properties);
-        int propertiesLength = propertiesText.length() + 1; //TODO ???
+        String propertiesText = svnPropertiesToString(properties, p42SVN.getCharset());
+        int propertiesLength = propertiesText.getBytes(p42SVN.getCharset()).length + 1; //TODO ???
         int textLength = text.length;
         String textMD5 = md5(text);
         int contentLength = propertiesLength + textLength;
@@ -466,9 +467,9 @@ public class SVNListener implements Listener {
         );
         files.put(file, new ChangeInfo(path, "Edit"));
         OutputStream outputStream = new FileOutputStream(file);
-        PrintWriter printWriter = new PrintWriter(outputStream);
-        String propertiesText = svnPropertiesToString(properties);
-        int propertiesLength = propertiesText.length() + 1; //TODO ???
+        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
+        String propertiesText = svnPropertiesToString(properties, p42SVN.getCharset());
+        int propertiesLength = propertiesText.getBytes(p42SVN.getCharset()).length + 1; //TODO ???
         int textLength = text.length;
         String textMD5 = md5(text);
         int contentLength = propertiesLength + textLength;
@@ -507,7 +508,8 @@ public class SVNListener implements Listener {
         );
         files.put(file, new ChangeInfo(path, "Delete"));
         OutputStream outputStream = new FileOutputStream(file);
-        SVNUtils.svnDelete(outputStream, path);
+        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
+        SVNUtils.svnDelete(printWriter, path);
         outputStream.close();
     }
 
@@ -517,7 +519,7 @@ public class SVNListener implements Listener {
         );
         files.put(file, new ChangeInfo(path, "Add Copy"));
         OutputStream outputStream = new FileOutputStream(file);
-        PrintWriter printWriter = new PrintWriter(outputStream);
+        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
         printWriter.print("Node-path: " + path + "\n");
         printWriter.print("Node-kind: file\n");
         printWriter.print("Node-action: add\n");
@@ -533,7 +535,7 @@ public class SVNListener implements Listener {
         );
         files.put(file, new ChangeInfo(path, "Replace Copy"));
         OutputStream outputStream = new FileOutputStream(file);
-        PrintWriter printWriter = new PrintWriter(outputStream);
+        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
         printWriter.print("Node-path: " + path + "\n");
         printWriter.print("Node-kind: file\n");
         printWriter.print("Node-action: replace\n");
