@@ -74,7 +74,7 @@ public class SVNListener implements Listener {
 
     private ConcurrentMap<String, Integer> dirStatuses = new ConcurrentHashMap<String, Integer>();
     private ConcurrentMap<String, Integer> fileStatuses = new ConcurrentHashMap<String, Integer>();
-    private ConcurrentMap<String, String> paths = new ConcurrentHashMap<String, String>();
+//    private ConcurrentMap<String, String> paths = new ConcurrentHashMap<String, String>();
 
     public SVNListener(P42SVN p42SVN) {
         this.p42SVN = p42SVN;
@@ -122,7 +122,7 @@ public class SVNListener implements Listener {
         try {
             FileAction action = fileSpec.getAction();
 
-            String svnPath = getSVNPathCaseInsensitive(fileSpec.getDepotPathString());
+            String svnPath = getSVNPath(fileSpec.getDepotPathString());
 
             if (ADD.equals(action)) {
                 p4AddToSVN(fileSpec, svnPath);
@@ -144,19 +144,20 @@ public class SVNListener implements Listener {
         }
     }
 
-    private String getSVNPathCaseInsensitive(String depotPathString) {
+    private String getSVNPath(String depotPathString) {
         String svnPath = Utils.depotToSVNPath(p42SVN.getBranches(), depotPathString);
 
-        if (svnPath != null) {
-            String result = paths.get(svnPath.toLowerCase());
-            if (result == null) {
-                result = paths.putIfAbsent(svnPath.toLowerCase(), svnPath);
-                if (result == null) {
-                    result = svnPath;
-                }
-            }
-            svnPath = result;
-        }
+        //It was epic fail
+//        if (svnPath != null) {
+//            String result = paths.get(svnPath.toLowerCase());
+//            if (result == null) {
+//                result = paths.putIfAbsent(svnPath.toLowerCase(), svnPath);
+//                if (result == null) {
+//                    result = svnPath;
+//                }
+//            }
+//            svnPath = result;
+//        }
 
         return svnPath;
     }
@@ -350,7 +351,7 @@ public class SVNListener implements Listener {
 
     private void p4BranchToSVN(IFileSpec fileSpec, String svnPath) throws Exception {
         IFileSpec fromFileSpec = p4GetCopyFromFileRevision(fileSpec);
-        String fromSvnPath = fromFileSpec != null ? getSVNPathCaseInsensitive(fromFileSpec.getDepotPathString()) : null;
+        String fromSvnPath = fromFileSpec != null ? getSVNPath(fromFileSpec.getDepotPathString()) : null;
         int fromChangeListId = fromFileSpec != null ? fromFileSpec.getChangelistId() : 0;
         int fromSvnRevision = fromChangeListId != 0 ? p42SVN.getRevisionManager().getRevisionIdForChangeListId(fromChangeListId) : 0;
         if (fromFileSpec != null && p4FilesAreIdentical(fileSpec, fromFileSpec) && fromSvnPath != null && fromSvnRevision != 0) {
@@ -364,7 +365,7 @@ public class SVNListener implements Listener {
 
     private void p4IntegrateToSVN(IFileSpec fileSpec, String svnPath) throws Exception {
         IFileSpec fromFileSpec = p4GetCopyFromFileRevision(fileSpec);
-        String fromSvnPath = fromFileSpec != null ? getSVNPathCaseInsensitive(fromFileSpec.getDepotPathString()) : null;
+        String fromSvnPath = fromFileSpec != null ? getSVNPath(fromFileSpec.getDepotPathString()) : null;
         int fromChangeListId = fromFileSpec != null ? fromFileSpec.getChangelistId() : 0;
         int fromSvnRevision = fromChangeListId != 0 ? p42SVN.getRevisionManager().getRevisionIdForChangeListId(fromChangeListId) : 0;
         if (fromFileSpec != null && p4FilesAreIdentical(fileSpec, fromFileSpec) && fromSvnPath != null && fromSvnRevision != 0) {
