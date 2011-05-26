@@ -2,6 +2,7 @@ package p42svn;
 
 import org.apache.commons.cli.*;
 
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -69,6 +70,10 @@ public class Main {
                 .create("timezone"));
         options.addOption("dump", false, "Only dump files into dump folder without assembling dump file.");
         options.addOption("assemble", false, "Only assemble dump file from already dumped files from dump folder.");
+        options.addOption(OptionBuilder.withArgName("CHARSET")
+                .hasArg()
+                .withDescription("Output files charset. Default is platform default.")
+                .create("charset"));
 
         CommandLineParser parser = new PosixParser();
 
@@ -149,6 +154,13 @@ public class Main {
                     String timezone = cmd.getOptionValue("timezone");
                     p42SVN.setTimeZone(TimeZone.getTimeZone(timezone));
                 }
+
+                Charset charset = Charset.defaultCharset();
+                if (cmd.hasOption("charset")) {
+                    String charsetString = cmd.getOptionValue("charset");
+                    charset = Charset.forName(charsetString);
+                }
+                p42SVN.setCharset(charset);
 
                 boolean dump = true;
                 boolean assemble = true;
