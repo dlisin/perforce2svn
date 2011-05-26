@@ -67,6 +67,8 @@ public class Main {
                 .hasArg()
                 .withDescription("Perforce server timezone, e.g. \"GMT-8\", \"America/Los_Angeles\".")
                 .create("timezone"));
+        options.addOption("dump", false, "Only dump files into dump folder without assembling dump file.");
+        options.addOption("assemble", false, "Only assemble dump file from already dumped files from dump folder.");
 
         CommandLineParser parser = new PosixParser();
 
@@ -148,11 +150,19 @@ public class Main {
                     p42SVN.setTimeZone(TimeZone.getTimeZone(timezone));
                 }
 
+                boolean dump = true;
+                boolean assemble = true;
+
+                if (cmd.hasOption("dump") || cmd.hasOption("assemble")) {
+                    dump = cmd.hasOption("dump");
+                    assemble = cmd.hasOption("assemble");
+                }
+
                 try {
-                    p42SVN.getP4().getServer(true);
+                    if (dump) p42SVN.getP4().getServer(true);
                     p42SVN.getEventDispatcher().addListener(new SVNListener(p42SVN));
-                    p42SVN.dumpChangeLists();
-                    p42SVN.assembleDumpFile();
+                    if (dump) p42SVN.dumpChangeLists();
+                    if (assemble) p42SVN.assembleDumpFile();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
