@@ -27,7 +27,6 @@ public class Main {
                 withDescription("Specify mapping of Perforce branch to repository path. Takes an " +
                         "argument of the form p4_depot_spec=svn_path. Multiple branch " +
                         "mappings may be specified, but at least one is required.").
-                isRequired().
                 create("branches"));
         options.addOption(OptionBuilder.withArgName("path")
                 .hasArg()
@@ -74,7 +73,7 @@ public class Main {
         try {
             CommandLine cmd = parser.parse(options, args);
 
-            if (cmd.hasOption("help")) {
+            if (cmd.hasOption("help") || cmd.getArgs().length == 0) {
                 HelpFormatter formatter = new HelpFormatter();
                 formatter.printHelp("p42svn", options);
             }
