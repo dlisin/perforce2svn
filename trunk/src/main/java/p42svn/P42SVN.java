@@ -66,6 +66,9 @@ public class P42SVN {
 
         for (IChangelistSummary changeListSummary : changeListSummaries) {
             revisionManager.putChangeListIdIntoQueue(changeListSummary.getId());
+        }
+
+        for (IChangelistSummary changeListSummary : changeListSummaries) {
             executorService.submit(new ChangeListProcessorRunnableWrapper(new ChangeListProcessor(this, changeListSummary), cdl));
         }
         cdl.await();
