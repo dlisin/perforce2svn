@@ -373,7 +373,7 @@ public class SVNListener implements Listener {
 
     private void p4BranchToSVN(IFileSpec fileSpec, String svnPath) throws Exception {
         IFileSpec fromFileSpec = p4GetCopyFromFileRevision(fileSpec);
-        String fromSvnPath = fromFileSpec != null ? getSVNPath(fromFileSpec.getDepotPathString()) : null;
+        String fromSvnPath = fromFileSpec != null && fromFileSpec.getDepotPathString() != null ? getSVNPath(fromFileSpec.getDepotPathString()) : null;
         int fromChangeListId = fromFileSpec != null ? fromFileSpec.getChangelistId() : 0;
         int fromSvnRevision = fromChangeListId != 0 ? p42SVN.getRevisionManager().getRevisionIdForChangeListId(fromChangeListId) : 0;
         if (fromFileSpec != null && p4FilesAreIdentical(fileSpec, fromFileSpec) && fromSvnPath != null && fromSvnRevision != 0) {
