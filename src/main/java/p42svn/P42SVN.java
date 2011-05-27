@@ -41,7 +41,7 @@ public class P42SVN {
     private boolean addOriginalChangeListId = false;
     private String originalChangeListInfoString = "Converted from original Perforce changelist ";
 
-    private RevisionManager revisionManager = new RevisionManager();
+    private RevisionManager revisionManager = new SimpleRevisionManager();
     private EventDispatcher eventDispatcher = new EventDispatcher();
     private FilesManager filesManager = new FilesManager();
 
