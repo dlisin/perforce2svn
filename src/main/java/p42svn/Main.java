@@ -1,12 +1,17 @@
 package p42svn;
 
-import org.apache.commons.cli.*;
-
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TimeZone;
+
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.PosixParser;
 
 /**
  * @author Pavel Belevich
@@ -74,6 +79,11 @@ public class Main {
                 .hasArg()
                 .withDescription("Output files charset. Default is platform default.")
                 .create("charset"));
+
+        options.addOption("fromChangeList", true, "Process only changelists with greater then given number");
+        options.addOption("toChangeList", true, "Process only changelists with less of equal to given number");
+        options.addOption("prevDumpDir", true, "Previous dump dir needed to continue import");
+
 
         CommandLineParser parser = new PosixParser();
 
@@ -170,6 +180,18 @@ public class Main {
                     assemble = cmd.hasOption("assemble");
                 }
 
+                if (cmd.hasOption("fromChangeList")) {
+                    p42SVN.setFromChangeList(Integer.parseInt(cmd.getOptionValue("fromChangeList")));
+                }
+                if (cmd.hasOption("toChangeList")) {
+                    p42SVN.setToChangeList(Integer.parseInt(cmd.getOptionValue("toChangeList")));
+                }
+                if (cmd.hasOption("prevDumpDir")) {
+                    p42SVN.setPreviousDumpPath(cmd.getOptionValue("prevDumpDir"));
+                    p42SVN.applyPropertiesFromPreviousDump();
+                }
+
+
                 try {
                     if (dump) p42SVN.getP4().getServer(true);
                     p42SVN.getEventDispatcher().addListener(new SVNListener(p42SVN));
@@ -179,7 +201,7 @@ public class Main {
                     e.printStackTrace();
                 }
             }
-        } catch (ParseException exp) {
+        } catch (Exception exp) {
             System.out.println("Unexpected exception:" + exp.getMessage());
             exp.printStackTrace();
         }

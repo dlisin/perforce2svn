@@ -11,6 +11,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -78,6 +79,23 @@ public class SVNListener implements Listener {
 
     public SVNListener(P42SVN p42SVN) {
         this.p42SVN = p42SVN;
+        if (!StringUtils.isEmpty(p42SVN.getPreviousDumpPath())) {
+            try {
+                loadDirectoriesAndFilesMetaInfo(p42SVN.getPreviousDumpPath());
+                restoreFilesStatuses();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private void restoreFilesStatuses() {
+        for (Entry<File, ChangeInfo> entry : files.entrySet()) {
+            ChangeInfo changeInfo = entry.getValue();
+            if ("Add".equals(changeInfo.getAction()) || "Add Copy".equals(changeInfo.getAction())) {
+                inc(fileStatuses, changeInfo.getFilePath());
+            }
+        }
     }
 
     public void handleChangeList(IChangelist changeList) throws Exception {
@@ -211,17 +229,20 @@ public class SVNListener implements Listener {
         }
     }
 
-    public void assembleDump() throws Exception {
-
-        Reader directoriesReader = new FileReader(new File(p42SVN.getChangelistsDumpDirectoryPath(), "directories"));
+    private void loadDirectoriesAndFilesMetaInfo(String baseFir) throws Exception {
+        Reader directoriesReader = new FileReader(new File(baseFir, "directories"));
         directories.clear();
         directories = MapUtils.readMap(directoriesReader, directories);
         directoriesReader.close();
 
-        Reader filesReader = new FileReader(new File(p42SVN.getChangelistsDumpDirectoryPath(), "files"));
+        Reader filesReader = new FileReader(new File(baseFir, "files"));
         files.clear();
         files = MapUtils.readMapChangeInfo(filesReader, files);
         filesReader.close();
+    }
+
+    public void assembleDump() throws Exception {
+        loadDirectoriesAndFilesMetaInfo(p42SVN.getChangelistsDumpDirectoryPath());
 
         File changeListsDumpDirectory = new File(p42SVN.getChangelistsDumpDirectoryPath());
         OutputStream outputStream = new FileOutputStream(p42SVN.getDumpFileName());
