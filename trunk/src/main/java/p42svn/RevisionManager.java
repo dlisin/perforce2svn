@@ -58,7 +58,7 @@ public class RevisionManager {
                 }
             }
             changeListsQueue.poll();
-            int result = create ? ++revisionId : 0;
+            int result = /*changeListId;//*/create ? ++revisionId : 0;
             revisionByChangeListId.put(changeListId, result);
             condition1.signalAll();
             condition2.signalAll();
