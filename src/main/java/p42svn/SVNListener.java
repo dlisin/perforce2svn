@@ -2,6 +2,8 @@ package p42svn;
 
 import com.perforce.p4java.core.IChangelist;
 import com.perforce.p4java.core.file.*;
+
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 
@@ -87,6 +89,7 @@ public class SVNListener implements Listener {
                 throw new RuntimeException(e);
             }
         }
+        clearDumpDirectory();
     }
 
     private void restoreFilesStatuses() {
@@ -96,6 +99,12 @@ public class SVNListener implements Listener {
                 inc(fileStatuses, changeInfo.getFilePath());
             }
         }
+    }
+
+    private void clearDumpDirectory() {
+        File changelistDumpDir = new File(p42SVN.getChangelistsDumpDirectoryPath());
+        FileUtils.deleteQuietly(changelistDumpDir);
+        changelistDumpDir.mkdirs();
     }
 
     public void handleChangeList(IChangelist changeList) throws Exception {
