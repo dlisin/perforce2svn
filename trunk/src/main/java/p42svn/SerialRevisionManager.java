@@ -21,10 +21,25 @@ public class SerialRevisionManager implements RevisionManager {
     private Map<Integer, Integer> revisionByChangeListId = new HashMap<Integer, Integer>();
     private int maxChangeListId = 0;
 
+    public int getRevisionId() {
+        return revisionId;
+    }
+
+    public void setRevisionId(int revisionId) {
+        this.revisionId = revisionId;
+    }
+
+    public Map<Integer, Integer> getRevisionByChangeListId() {
+        return revisionByChangeListId;
+    }
+
+    public Collection<Integer> getChangeLists() {
+        return changeLists;
+    }
 
     /* (non-Javadoc)
-     * @see p42svn.RevisionManager#putChangeListIdIntoQueue(int)
-     */
+    * @see p42svn.RevisionManager#putChangeListIdIntoQueue(int)
+    */
     public void putChangeListIdIntoQueue(int changeListId) {
 //        lock.lock();
 //        try {
@@ -77,6 +92,15 @@ public class SerialRevisionManager implements RevisionManager {
                 condition2.signalAll();
             }
             return result;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public int createRevisionId() {
+        lock.lock();
+        try {
+            return ++revisionId;
         } finally {
             lock.unlock();
         }

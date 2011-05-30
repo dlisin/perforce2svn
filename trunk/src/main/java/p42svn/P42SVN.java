@@ -4,13 +4,8 @@ import com.perforce.p4java.core.IChangelistSummary;
 import com.perforce.p4java.core.file.FileSpecBuilder;
 import com.perforce.p4java.server.IServer;
 
-import java.io.File;
+import java.io.*;
 import java.nio.charset.Charset;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.Reader;
-import java.io.Writer;
-
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -24,6 +19,7 @@ import java.util.concurrent.Executors;
 public class P42SVN {
 
     private static final String KEY_LAST_CHANGELIST = "dump.last.changelist.id";
+    private static final String KEY_LAST_SVNREVISION = "dump.last.svnrevision.id";
 
     private P4 p4 = new P4();
 
@@ -41,7 +37,7 @@ public class P42SVN {
     private boolean addOriginalChangeListId = false;
     private String originalChangeListInfoString = "Converted from original Perforce changelist ";
 
-    private RevisionManager revisionManager = new SimpleRevisionManager();
+    private RevisionManager revisionManager = new SerialRevisionManager();
     private EventDispatcher eventDispatcher = new EventDispatcher();
     private FilesManager filesManager = new FilesManager();
 
@@ -77,6 +73,7 @@ public class P42SVN {
 
         Properties props = new Properties();
         props.setProperty(KEY_LAST_CHANGELIST, String.valueOf(changeListSummaries.get(changeListSummaries.size()-1).getId()));
+        props.setProperty(KEY_LAST_SVNREVISION, String.valueOf(revisionManager.getRevisionId()));
         saveMetaInfo(props);
 
         eventDispatcher.afterDumping();
@@ -86,6 +83,7 @@ public class P42SVN {
         try {
             Properties p = loadPreviousDumpMetaInfo();
             fromChangeList = Integer.parseInt(p.getProperty(KEY_LAST_CHANGELIST));
+            revisionManager.setRevisionId(Integer.parseInt(p.getProperty(KEY_LAST_SVNREVISION)));
         } catch (Exception e) {
             throw new RuntimeException("Failed to load meta-info from previous dump.", e);
         }

@@ -2,7 +2,6 @@ package p42svn;
 
 import com.perforce.p4java.core.IChangelist;
 import com.perforce.p4java.core.file.*;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
@@ -13,13 +12,12 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static com.perforce.p4java.core.file.FileAction.*;
 import static p42svn.ConcurrentMapUtils.*;
-import static p42svn.SVNUtils.*;
+import static p42svn.SVNUtils.svnPropertiesToString;
 
 /**
  * @author Pavel Belevich
@@ -53,38 +51,15 @@ public class SVNListener implements Listener {
     private ConcurrentMap<Integer, ConcurrentMap<String, Integer>> localDirSeenByChangeListId =
             new ConcurrentHashMap<Integer, ConcurrentMap<String, Integer>>();
 
-    private Map<File, String> directories = Collections.synchronizedMap(new HashMap<File, String>());
-
-    public static class ChangeInfo {
-        private String filePath;
-        private String action;
-
-        public ChangeInfo(String filePath, String action) {
-            this.filePath = filePath;
-            this.action = action;
-        }
-
-        public String getFilePath() {
-            return filePath;
-        }
-
-        public String getAction() {
-            return action;
-        }
-    }
-
-    private Map<File, ChangeInfo> files = Collections.synchronizedMap(new HashMap<File, ChangeInfo>());
-
-    private ConcurrentMap<String, Integer> dirStatuses = new ConcurrentHashMap<String, Integer>();
-    private ConcurrentMap<String, Integer> fileStatuses = new ConcurrentHashMap<String, Integer>();
-//    private ConcurrentMap<String, String> paths = new ConcurrentHashMap<String, String>();
+//    private Map<File, ChangeInfo> directories = Collections.synchronizedMap(new HashMap<File, ChangeInfo>());
 
     public SVNListener(P42SVN p42SVN) {
         this.p42SVN = p42SVN;
         if (!StringUtils.isEmpty(p42SVN.getPreviousDumpPath())) {
             try {
                 loadDirectoriesAndFilesMetaInfo(p42SVN.getPreviousDumpPath());
-                restoreFilesStatuses();
+                loadDirStatusesAndFileStatuses(p42SVN.getPreviousDumpPath());
+//                restoreFilesStatuses();
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -92,14 +67,14 @@ public class SVNListener implements Listener {
         clearDumpDirectory();
     }
 
-    private void restoreFilesStatuses() {
-        for (Entry<File, ChangeInfo> entry : files.entrySet()) {
-            ChangeInfo changeInfo = entry.getValue();
-            if ("Add".equals(changeInfo.getAction()) || "Add Copy".equals(changeInfo.getAction())) {
-                inc(fileStatuses, changeInfo.getFilePath());
-            }
-        }
-    }
+//    private void restoreFilesStatuses() {
+//        for (Entry<File, ChangeInfo> entry : p42SVN.getFilesManager().getFiles().entrySet()) {
+//            ChangeInfo changeInfo = entry.getValue();
+//            if ("Add".equals(changeInfo.getAction()) || "Add Copy".equals(changeInfo.getAction())) {
+//                inc(p42SVN.getFilesManager().getFileStatuses(), changeInfo.getFilePath());
+//            }
+//        }
+//    }
 
     private void clearDumpDirectory() {
         File changelistDumpDir = new File(p42SVN.getChangelistsDumpDirectoryPath());
@@ -193,14 +168,25 @@ public class SVNListener implements Listener {
 
         svnDeleteEmptyParentDirs();
 
-        Writer directoriesWriter = new FileWriter(new File(p42SVN.getChangelistsDumpDirectoryPath(), "directories"));
-        MapUtils.writeMap(directoriesWriter, this.directories);
-        directoriesWriter.close();
+//        Writer directoriesWriter = new FileWriter(new File(p42SVN.getChangelistsDumpDirectoryPath(), "directories"));
+//        MapUtils.writeMapChangeInfo(directoriesWriter, this.directories);
+//        directoriesWriter.close();
 
         Writer filesWriter = new FileWriter(new File(p42SVN.getChangelistsDumpDirectoryPath(), "files"));
-        MapUtils.writeMapChangeInfo(filesWriter, this.files);
+        MapUtils.writeMapChangeInfo(filesWriter, p42SVN.getFilesManager().getFiles());
         filesWriter.close();
 
+        Writer dirsUsageWriter = new FileWriter(new File(p42SVN.getChangelistsDumpDirectoryPath(), "dirsUsage"));
+        MapUtils.writeMapStringAtomicInteger(dirsUsageWriter, p42SVN.getFilesManager().getDirsUsage());
+        dirsUsageWriter.close();
+
+        Writer revisionByChangeListIdWriter = new FileWriter(new File(p42SVN.getChangelistsDumpDirectoryPath(), "revisionByChangeListId"));
+        MapUtils.writeMapInteger(revisionByChangeListIdWriter, p42SVN.getRevisionManager().getRevisionByChangeListId());
+        revisionByChangeListIdWriter.close();
+
+        Writer changeListsWriter = new FileWriter(new File(p42SVN.getChangelistsDumpDirectoryPath(), "changeLists"));
+        MapUtils.writeListInteger(changeListsWriter, p42SVN.getRevisionManager().getChangeLists());
+        changeListsWriter.close();
     }
 
     public void svnDeleteEmptyParentDirs() throws Exception {
@@ -216,8 +202,8 @@ public class SVNListener implements Listener {
 
         int changeListId = p42SVN.getRevisionManager().getMaxChangeListId() + 1;
 
-        p42SVN.getRevisionManager().putChangeListIdIntoQueue(changeListId);
-        int svnRevision = p42SVN.getRevisionManager().createRevisionIdForChangeListId(changeListId);
+//        p42SVN.getRevisionManager().putChangeListIdIntoQueue(changeListId);
+        int svnRevision = p42SVN.getRevisionManager().createRevisionId();
 
         File changeListDumpDir = new File(p42SVN.getChangelistsDumpDirectoryPath(),
                 String.valueOf(changeListId));
@@ -235,19 +221,47 @@ public class SVNListener implements Listener {
             OutputStream outputStream = new FileOutputStream(file);
             PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
             SVNUtils.svnDelete(printWriter, deletedFile);
+            p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(deletedFile, "Delete"));
         }
     }
 
     private void loadDirectoriesAndFilesMetaInfo(String baseFir) throws Exception {
-        Reader directoriesReader = new FileReader(new File(baseFir, "directories"));
-        directories.clear();
-        directories = MapUtils.readMap(directoriesReader, directories);
-        directoriesReader.close();
+//        Reader directoriesReader = new FileReader(new File(baseFir, "directories"));
+//        directories.clear();
+//        directories = MapUtils.readMapChangeInfo(directoriesReader, directories);
+//        directoriesReader.close();
 
         Reader filesReader = new FileReader(new File(baseFir, "files"));
-        files.clear();
-        files = MapUtils.readMapChangeInfo(filesReader, files);
+        p42SVN.getFilesManager().getFiles().clear();
+        MapUtils.readMapChangeInfo(filesReader, p42SVN.getFilesManager().getFiles());
         filesReader.close();
+
+        Reader dirsUsageReader = new FileReader(new File(baseFir, "dirsUsage"));
+        p42SVN.getFilesManager().getDirsUsage().clear();
+        MapUtils.readMapStringAtomicInteger(dirsUsageReader, p42SVN.getFilesManager().getDirsUsage());
+        dirsUsageReader.close();
+
+        Reader revisionByChangeListIdReader = new FileReader(new File(baseFir, "revisionByChangeListId"));
+        p42SVN.getRevisionManager().getRevisionByChangeListId().clear();
+        MapUtils.readMapInteger(revisionByChangeListIdReader, p42SVN.getRevisionManager().getRevisionByChangeListId());
+        revisionByChangeListIdReader.close();
+
+        Reader changeListsReader = new FileReader(new File(baseFir, "changeLists"));
+        p42SVN.getRevisionManager().getChangeLists().clear();
+        MapUtils.readListInteger(changeListsReader, p42SVN.getRevisionManager().getChangeLists());
+        changeListsReader.close();
+    }
+
+    private void loadDirStatusesAndFileStatuses(String baseFir) throws IOException {
+//        Reader dirStatusesReader = new FileReader(new File(baseFir, "dirStatuses"));
+//        dirStatuses.clear();
+//        dirStatuses = new ConcurrentHashMap<String, Integer>(MapUtils.readMapStringInteger(dirStatusesReader, dirStatuses));
+//        dirStatusesReader.close();
+
+        Reader fileStatusesReader = new FileReader(new File(baseFir, "fileStatuses"));
+        p42SVN.getFilesManager().getFileStatuses().clear();
+        p42SVN.getFilesManager().getFileStatuses().putAll(MapUtils.readMapStringInteger(fileStatusesReader, p42SVN.getFilesManager().getFileStatuses()));
+        fileStatusesReader.close();
     }
 
     public void assembleDump() throws Exception {
@@ -297,24 +311,24 @@ public class SVNListener implements Listener {
             for (File partFile : parts) {
                 boolean allow = true;
 
-                String dirPath = directories.get(partFile);
-                if (dirPath != null) {
-                    allow = getAndInc(dirStatuses, dirPath) == 0;
-                }
+//                ChangeInfo dirPath = directories.get(partFile);
+//                if (dirPath != null) {
+//                    allow = getAndInc(dirStatuses, dirPath) == 0;
+//                }
 
-                ChangeInfo changeInfo = files.get(partFile);
+                ChangeInfo changeInfo = p42SVN.getFilesManager().getFiles().get(partFile);
                 if (changeInfo != null) {
-                    int status = get(fileStatuses, changeInfo.getFilePath());
+                    int status = get(p42SVN.getFilesManager().getFileStatuses(), changeInfo.getFilePath());
                     if ("Add".equals(changeInfo.getAction()) || "Add Copy".equals(changeInfo.getAction())) {
                         if (status == 0) {
-                            inc(fileStatuses, changeInfo.getFilePath());
+                            inc(p42SVN.getFilesManager().getFileStatuses(), changeInfo.getFilePath());
                             allow = true;
                         } else {
                             allow = false;
                         }
                     } else if ("Delete".equals(changeInfo.getAction())) {
                         if (status == 1) {
-                            dec(fileStatuses, changeInfo.getFilePath());
+                            dec(p42SVN.getFilesManager().getFileStatuses(), changeInfo.getFilePath());
                             allow = true;
                         } else {
                             allow = false;
@@ -337,6 +351,14 @@ public class SVNListener implements Listener {
         }
 
         outputStream.close();
+
+//        Writer dirStatusesReader = new FileWriter(new File(p42SVN.getChangelistsDumpDirectoryPath(), "dirStatuses"));
+//        MapUtils.writeMapStringInteger(dirStatusesReader, this.dirStatuses);
+//        dirStatusesReader.close();
+
+        Writer fileStatusesReader = new FileWriter(new File(p42SVN.getChangelistsDumpDirectoryPath(), "fileStatuses"));
+        MapUtils.writeMapStringInteger(fileStatusesReader, p42SVN.getFilesManager().getFileStatuses());
+        fileStatusesReader.close();
 
     }
 
@@ -383,9 +405,9 @@ public class SVNListener implements Listener {
     private void p4BranchToSVN(IFileSpec fileSpec, String svnPath) throws Exception {
         IFileSpec fromFileSpec = p4GetCopyFromFileRevision(fileSpec);
         String fromSvnPath = fromFileSpec != null && fromFileSpec.getDepotPathString() != null ? getSVNPath(fromFileSpec.getDepotPathString()) : null;
-        int fromChangeListId = fromFileSpec != null ? fromFileSpec.getChangelistId() : 0;
+        int fromChangeListId = fromFileSpec != null && fromFileSpec.getDepotPathString() != null ? fromFileSpec.getChangelistId() : 0;
         int fromSvnRevision = fromChangeListId != 0 ? p42SVN.getRevisionManager().getRevisionIdForChangeListId(fromChangeListId) : 0;
-        if (fromFileSpec != null && p4FilesAreIdentical(fileSpec, fromFileSpec) && fromSvnPath != null && fromSvnRevision != 0) {
+        if (fromFileSpec != null && fromFileSpec.getDepotPathString() != null && p4FilesAreIdentical(fileSpec, fromFileSpec) && fromSvnPath != null && fromSvnRevision != 0) {
             p42SVN.getFilesManager().incUsage(svnPath);
             svnAddParentDirs(fileSpec.getChangelistId(), svnPath);
             svnAddCopy(fileSpec.getChangelistId(), svnPath, fromSvnPath, fromSvnRevision);
@@ -396,10 +418,10 @@ public class SVNListener implements Listener {
 
     private void p4IntegrateToSVN(IFileSpec fileSpec, String svnPath) throws Exception {
         IFileSpec fromFileSpec = p4GetCopyFromFileRevision(fileSpec);
-        String fromSvnPath = fromFileSpec != null ? getSVNPath(fromFileSpec.getDepotPathString()) : null;
-        int fromChangeListId = fromFileSpec != null ? fromFileSpec.getChangelistId() : 0;
+        String fromSvnPath = fromFileSpec != null && fromFileSpec.getDepotPathString() != null ? getSVNPath(fromFileSpec.getDepotPathString()) : null;
+        int fromChangeListId = fromFileSpec != null && fromFileSpec.getDepotPathString() != null ? fromFileSpec.getChangelistId() : 0;
         int fromSvnRevision = fromChangeListId != 0 ? p42SVN.getRevisionManager().getRevisionIdForChangeListId(fromChangeListId) : 0;
-        if (fromFileSpec != null && p4FilesAreIdentical(fileSpec, fromFileSpec) && fromSvnPath != null && fromSvnRevision != 0) {
+        if (fromFileSpec != null && fromFileSpec.getDepotPathString() != null && p4FilesAreIdentical(fileSpec, fromFileSpec) && fromSvnPath != null && fromSvnRevision != 0) {
             svnReplaceCopy(fileSpec.getChangelistId(), svnPath, fromSvnPath, fromSvnRevision);
         } else {
             p4EditToSVN(fileSpec, svnPath);
@@ -429,7 +451,7 @@ public class SVNListener implements Listener {
         File file = new File(changelistDumpDirsByChangeListId.get(changeListId),
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
-        directories.put(file, path);
+        p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Add"));
         OutputStream outputStream = new FileOutputStream(file);
         PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
         String propertiesText = svnPropertiesToString(properties, p42SVN.getCharset());
@@ -450,7 +472,7 @@ public class SVNListener implements Listener {
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
 
-        files.put(file, new ChangeInfo(path, "Add"));
+        p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Add"));
 
         OutputStream outputStream = new FileOutputStream(file);
         PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
@@ -495,7 +517,7 @@ public class SVNListener implements Listener {
         File file = new File(changelistDumpDirsByChangeListId.get(changeListId),
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
-        files.put(file, new ChangeInfo(path, "Edit"));
+        p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Edit"));
         OutputStream outputStream = new FileOutputStream(file);
         PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
         String propertiesText = svnPropertiesToString(properties, p42SVN.getCharset());
@@ -536,7 +558,7 @@ public class SVNListener implements Listener {
         File file = new File(changelistDumpDirsByChangeListId.get(changeListId),
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
-        files.put(file, new ChangeInfo(path, "Delete"));
+        p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Delete"));
         OutputStream outputStream = new FileOutputStream(file);
         PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
         SVNUtils.svnDelete(printWriter, path);
@@ -547,7 +569,7 @@ public class SVNListener implements Listener {
         File file = new File(changelistDumpDirsByChangeListId.get(changeListId),
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
-        files.put(file, new ChangeInfo(path, "Add Copy"));
+        p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Add Copy"));
         OutputStream outputStream = new FileOutputStream(file);
         PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
         printWriter.print("Node-path: " + path + "\n");
@@ -563,7 +585,7 @@ public class SVNListener implements Listener {
         File file = new File(changelistDumpDirsByChangeListId.get(changeListId),
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
-        files.put(file, new ChangeInfo(path, "Replace Copy"));
+        p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Replace Copy"));
         OutputStream outputStream = new FileOutputStream(file);
         PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
         printWriter.print("Node-path: " + path + "\n");
