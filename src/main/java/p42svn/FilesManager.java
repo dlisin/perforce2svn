@@ -1,5 +1,7 @@
 package p42svn;
 
+import java.io.File;
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -19,6 +21,10 @@ public class FilesManager {
             }
     );
 
+    private ConcurrentMap<File, ChangeInfo> files = new ConcurrentHashMap(new HashMap<File, ChangeInfo>());
+
+    private ConcurrentMap<String, Integer> fileStatuses = new ConcurrentHashMap<String, Integer>();
+
     public ConcurrentMap<String, AtomicInteger> getDirsUsage() {
         return dirsUsage;
     }
@@ -36,6 +42,14 @@ public class FilesManager {
             if (add) dirsUsage.get(parent).incrementAndGet();
             else dirsUsage.get(parent).decrementAndGet();
         }
+    }
+
+    public ConcurrentMap<File, ChangeInfo> getFiles() {
+        return files;
+    }
+
+    public ConcurrentMap<String, Integer> getFileStatuses() {
+        return fileStatuses;
     }
 
 }
