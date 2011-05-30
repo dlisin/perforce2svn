@@ -2,7 +2,6 @@ package p42svn;
 
 import com.perforce.p4java.core.IChangelist;
 import com.perforce.p4java.core.file.*;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 
@@ -64,7 +63,6 @@ public class SVNListener implements Listener {
                 throw new RuntimeException(e);
             }
         }
-        clearDumpDirectory();
     }
 
 //    private void restoreFilesStatuses() {
@@ -75,12 +73,6 @@ public class SVNListener implements Listener {
 //            }
 //        }
 //    }
-
-    private void clearDumpDirectory() {
-        File changelistDumpDir = new File(p42SVN.getChangelistsDumpDirectoryPath());
-        FileUtils.deleteQuietly(changelistDumpDir);
-        changelistDumpDir.mkdirs();
-    }
 
     public void handleChangeList(IChangelist changeList) throws Exception {
         File changelistDumpDir = new File(p42SVN.getChangelistsDumpDirectoryPath(),
@@ -268,10 +260,10 @@ public class SVNListener implements Listener {
         loadDirectoriesAndFilesMetaInfo(p42SVN.getChangelistsDumpDirectoryPath());
 
         File changeListsDumpDirectory = new File(p42SVN.getChangelistsDumpDirectoryPath());
-        OutputStream outputStream = new FileOutputStream(p42SVN.getDumpFileName());
-        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
-        printWriter.print("SVN-fs-dump-format-version: 1\n\n");
-        printWriter.flush();
+//        OutputStream outputStream = new FileOutputStream(p42SVN.getDumpFileName());
+//        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
+//        printWriter.print("SVN-fs-dump-format-version: 1\n\n");
+//        printWriter.flush();
 
         File[] changeListDumpDirectories = changeListsDumpDirectory.listFiles(new FileFilter() {
             public boolean accept(File pathname) {
@@ -290,7 +282,22 @@ public class SVNListener implements Listener {
             }
         });
 
+        int changeListCounter = 0;
+        int dumpsCounter = 0;
+        OutputStream outputStream = null;
+
         for (File changeListDumpDirectory : changeListDumpDirectories) {
+
+            if ((p42SVN.getSplitBy() == 0 && changeListCounter == 0) || (p42SVN.getSplitBy() != 0 && changeListCounter % p42SVN.getSplitBy() == 0)) {
+                if (outputStream != null) {
+                    outputStream.close();
+                }
+                outputStream = new FileOutputStream(new File(p42SVN.getDumpFileName() + (p42SVN.getSplitBy() != 0 ? ++dumpsCounter : "")));
+                PrintWriter printWriter = new PrintWriter(outputStream);
+                printWriter.print("SVN-fs-dump-format-version: 1\n\n");
+                printWriter.flush();
+            }
+
             File[] parts = changeListDumpDirectory.listFiles(new FileFilter() {
                 public boolean accept(File pathname) {
                     boolean isNumber = true;
@@ -348,9 +355,12 @@ public class SVNListener implements Listener {
                     outputStream.flush();
                 }
             }
+            changeListCounter++;
         }
 
-        outputStream.close();
+        if (outputStream != null) {
+            outputStream.close();
+        }
 
 //        Writer dirStatusesReader = new FileWriter(new File(p42SVN.getChangelistsDumpDirectoryPath(), "dirStatuses"));
 //        MapUtils.writeMapStringInteger(dirStatusesReader, this.dirStatuses);

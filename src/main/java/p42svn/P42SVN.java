@@ -3,6 +3,7 @@ package p42svn;
 import com.perforce.p4java.core.IChangelistSummary;
 import com.perforce.p4java.core.file.FileSpecBuilder;
 import com.perforce.p4java.server.IServer;
+import org.apache.commons.io.FileUtils;
 
 import java.io.*;
 import java.nio.charset.Charset;
@@ -44,6 +45,8 @@ public class P42SVN {
     private int fromChangeList = 0;
     private int toChangeList = Integer.MAX_VALUE;
     private String previousDumpPath = null;
+
+    private int splitBy = 0;
 
     public void dumpChangeLists() throws Exception {
         System.out.println("Start");
@@ -126,6 +129,12 @@ public class P42SVN {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void clearDumpDirectory() {
+        File changelistDumpDir = new File(getChangelistsDumpDirectoryPath());
+        FileUtils.deleteQuietly(changelistDumpDir);
+        changelistDumpDir.mkdirs();
     }
 
     public void assembleDumpFile() throws Exception {
@@ -244,6 +253,11 @@ public class P42SVN {
         this.previousDumpPath = previousDumpPath;
     }
 
+    public int getSplitBy() {
+        return splitBy;
+    }
 
-
+    public void setSplitBy(int splitBy) {
+        this.splitBy = splitBy;
+    }
 }
