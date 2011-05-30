@@ -1,17 +1,12 @@
 package p42svn;
 
+import org.apache.commons.cli.*;
+
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TimeZone;
-
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.OptionBuilder;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.PosixParser;
 
 /**
  * @author Pavel Belevich
@@ -83,6 +78,11 @@ public class Main {
         options.addOption("fromChangeList", true, "Process only changelists with greater then given number");
         options.addOption("toChangeList", true, "Process only changelists with less of equal to given number");
         options.addOption("prevDumpDir", true, "Previous dump dir needed to continue import");
+
+        options.addOption(OptionBuilder.withArgName("N")
+                .hasArg()
+                .withDescription("Split dump file by N parts.")
+                .create("splitBy"));
 
 
         CommandLineParser parser = new PosixParser();
@@ -191,10 +191,14 @@ public class Main {
                     p42SVN.applyPropertiesFromPreviousDump();
                 }
 
+                if (cmd.hasOption("splitBy")) {
+                    p42SVN.setSplitBy(Integer.parseInt(cmd.getOptionValue("splitBy")));
+                }
 
                 try {
                     if (dump) p42SVN.getP4().getServer(true);
                     p42SVN.getEventDispatcher().addListener(new SVNListener(p42SVN));
+                    if (dump) p42SVN.clearDumpDirectory();
                     if (dump) p42SVN.dumpChangeLists();
                     if (assemble) p42SVN.assembleDumpFile();
                 } catch (Exception e) {
