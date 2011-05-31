@@ -78,6 +78,7 @@ public class Main {
         options.addOption("fromChangeList", true, "Process only changelists with greater then given number");
         options.addOption("toChangeList", true, "Process only changelists with less of equal to given number");
         options.addOption("prevDumpDir", true, "Previous dump dir needed to continue import");
+        options.addOption("restore", false, "Restore from previous failure, do not clear dump dir, reuse files already processed");
 
         options.addOption(OptionBuilder.withArgName("N")
                 .hasArg()
@@ -171,7 +172,7 @@ public class Main {
                     charset = Charset.forName(charsetString);
                 }
                 p42SVN.setCharset(charset);
-
+                p42SVN.setRestoreMode(cmd.hasOption("restore"));
                 boolean dump = true;
                 boolean assemble = true;
 
@@ -195,10 +196,11 @@ public class Main {
                     p42SVN.setSplitBy(Integer.parseInt(cmd.getOptionValue("splitBy")));
                 }
 
+
                 try {
                     if (dump) p42SVN.getP4().getServer(true);
                     p42SVN.getEventDispatcher().addListener(new SVNListener(p42SVN));
-                    if (dump) p42SVN.clearDumpDirectory();
+                    if (dump && !p42SVN.isRestoreMode()) p42SVN.clearDumpDirectory();
                     if (dump) p42SVN.dumpChangeLists();
                     if (assemble) p42SVN.assembleDumpFile();
                 } catch (Exception e) {
