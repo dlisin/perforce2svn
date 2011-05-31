@@ -7,6 +7,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.builder.ToStringBuilder;
+
 /**
  * @author Pavel Belevich
  *         Date: 5/8/11
@@ -61,6 +63,24 @@ public final class Utils {
         String[] result = parents.toArray(new String[parents.size()]);
         Arrays.sort(result);
         return result;
+    }
+
+    public static String fileSpecToString(IFileSpec fileSpec) {
+        String params = "\nFileSpec props: " + new ToStringBuilder(fileSpec)
+        .append("getBaseRev()", fileSpec.getBaseRev())
+        .append("getEndFromRev()", fileSpec.getEndFromRev())
+        .append("getEndRevision()", fileSpec.getEndRevision())
+        .append("getEndToRev()", fileSpec.getEndToRev())
+        .append("getFromFile()", fileSpec.getFromFile())
+        .append("getOriginalPathString()", fileSpec.getOriginalPathString())
+        .append("getStartFromRev()", fileSpec.getStartFromRev())
+        .append("getStartRevision()", fileSpec.getStartRevision())
+        .append("getStartToRev()", fileSpec.getStartToRev())
+        .append("getToFile()", fileSpec.getToFile())
+        .append("isLocked()", fileSpec.isLocked())
+        .toString();
+        String objectDump = "\nFileSpec Reflection: " + ToStringBuilder.reflectionToString(fileSpec);
+        return params + objectDump;
     }
 
 }

@@ -4,7 +4,6 @@ import com.perforce.p4java.core.IChangelist;
 import com.perforce.p4java.core.file.*;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
-
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
@@ -134,7 +133,7 @@ public class SVNListener implements Listener {
                 throw new FileProcessorException("Unknown action");
             }
         } catch (Exception e) {
-            throw new FileProcessorException(e);
+            throw new FileProcessorException(Utils.fileSpecToString(fileSpec), e);
         }
     }
 
@@ -462,6 +461,10 @@ public class SVNListener implements Listener {
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
         p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Add"));
+        if (file.exists()) {
+            return;
+        }
+
         OutputStream outputStream = new FileOutputStream(file);
         PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
         String propertiesText = svnPropertiesToString(properties, p42SVN.getCharset());
@@ -481,8 +484,10 @@ public class SVNListener implements Listener {
         File file = new File(changelistDumpDirsByChangeListId.get(changeListId),
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
-
         p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Add"));
+        if (file.exists()) {
+            return;
+        }
 
         OutputStream outputStream = new FileOutputStream(file);
         PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
@@ -528,6 +533,10 @@ public class SVNListener implements Listener {
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
         p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Edit"));
+        if (file.exists()) {
+            return;
+        }
+
         OutputStream outputStream = new FileOutputStream(file);
         PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
         String propertiesText = svnPropertiesToString(properties, p42SVN.getCharset());
@@ -569,6 +578,9 @@ public class SVNListener implements Listener {
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
         p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Delete"));
+        if (file.exists()) {
+            return;
+        }
         OutputStream outputStream = new FileOutputStream(file);
         PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
         SVNUtils.svnDelete(printWriter, path);
@@ -580,6 +592,9 @@ public class SVNListener implements Listener {
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
         p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Add Copy"));
+        if (file.exists()) {
+            return;
+        }
         OutputStream outputStream = new FileOutputStream(file);
         PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
         printWriter.print("Node-path: " + path + "\n");
@@ -596,6 +611,9 @@ public class SVNListener implements Listener {
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
         p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Replace Copy"));
+        if (file.exists()) {
+            return;
+        }
         OutputStream outputStream = new FileOutputStream(file);
         PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
         printWriter.print("Node-path: " + path + "\n");
