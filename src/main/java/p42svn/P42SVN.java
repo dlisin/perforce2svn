@@ -4,13 +4,13 @@ import com.perforce.p4java.core.IChangelistSummary;
 import com.perforce.p4java.core.file.FileSpecBuilder;
 import com.perforce.p4java.server.IServer;
 import org.apache.commons.io.FileUtils;
-
 import java.io.*;
 import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Pavel Belevich
@@ -47,9 +47,12 @@ public class P42SVN {
     private String previousDumpPath = null;
 
     private int splitBy = 0;
+    private boolean restoreMode = false;
+    private ThreadLocal<Boolean> reuseChangelist = new ThreadLocal<Boolean>();
 
     public void dumpChangeLists() throws Exception {
         System.out.println("Start");
+        long time = System.currentTimeMillis();
 
         TimeZone.setDefault(timeZone);
 
@@ -72,7 +75,8 @@ public class P42SVN {
         }
         cdl.await();
         executorService.shutdown();
-        System.out.println("Finish");
+        System.out.println("Finish in " +
+                TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - time) + "sec");
 
         Properties props = new Properties();
         props.setProperty(KEY_LAST_CHANGELIST, String.valueOf(changeListSummaries.get(changeListSummaries.size()-1).getId()));
@@ -260,4 +264,23 @@ public class P42SVN {
     public void setSplitBy(int splitBy) {
         this.splitBy = splitBy;
     }
+
+    public boolean isRestoreMode() {
+        return restoreMode;
+    }
+
+    public void setRestoreMode(boolean restoreMode) {
+        this.restoreMode = restoreMode;
+    }
+
+    public boolean isReuseChangelist() {
+        return reuseChangelist.get();
+    }
+
+    public void setReuseChangelist(boolean reuseMode) {
+        reuseChangelist.set(reuseMode);
+    }
+
+
+
 }

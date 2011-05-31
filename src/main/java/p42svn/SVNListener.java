@@ -1,21 +1,58 @@
 package p42svn;
 
-import com.perforce.p4java.core.IChangelist;
-import com.perforce.p4java.core.file.*;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
-import java.io.*;
+import static com.perforce.p4java.core.file.FileAction.ADD;
+import static com.perforce.p4java.core.file.FileAction.BRANCH;
+import static com.perforce.p4java.core.file.FileAction.DELETE;
+import static com.perforce.p4java.core.file.FileAction.EDIT;
+import static com.perforce.p4java.core.file.FileAction.INTEGRATE;
+import static com.perforce.p4java.core.file.FileAction.PURGE;
+import static p42svn.ConcurrentMapUtils.dec;
+import static p42svn.ConcurrentMapUtils.get;
+import static p42svn.ConcurrentMapUtils.getAndInc;
+import static p42svn.ConcurrentMapUtils.inc;
+import static p42svn.SVNUtils.svnPropertiesToString;
+
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.Reader;
+import java.io.Writer;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import static com.perforce.p4java.core.file.FileAction.*;
-import static p42svn.ConcurrentMapUtils.*;
-import static p42svn.SVNUtils.svnPropertiesToString;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.builder.ToStringBuilder;
+
+import com.perforce.p4java.core.IChangelist;
+import com.perforce.p4java.core.file.FileAction;
+import com.perforce.p4java.core.file.FileSpecBuilder;
+import com.perforce.p4java.core.file.IFileRevisionData;
+import com.perforce.p4java.core.file.IFileSpec;
+import com.perforce.p4java.core.file.IRevisionIntegrationData;
+import com.perforce.p4java.exception.RequestException;
 
 /**
  * @author Pavel Belevich
@@ -76,10 +113,12 @@ public class SVNListener implements Listener {
     public void handleChangeList(IChangelist changeList) throws Exception {
         File changelistDumpDir = new File(p42SVN.getChangelistsDumpDirectoryPath(),
                 String.valueOf(changeList.getId()));
-        changelistDumpDir.mkdirs();   //TODO Warning!
-
         changelistDumpDirsByChangeListId.put(changeList.getId(), changelistDumpDir);
-
+        if (p42SVN.isReuseChangelist()) {
+            return;
+        }
+        FileUtils.deleteQuietly(changelistDumpDir);
+        changelistDumpDir.mkdirs();   //TODO Warning!
         Properties properties = new Properties();
         String description = changeList.getDescription();
         if (p42SVN.isAddOriginalChangeListId()) {
@@ -375,15 +414,19 @@ public class SVNListener implements Listener {
 
     private void p4AddToSVN(IFileSpec fileSpec, String svnPath) throws Exception {
         svnAddParentDirs(fileSpec.getChangelistId(), svnPath);
-
         p42SVN.getFilesManager().incUsage(svnPath);
-
-        byte[] content = p4GetFileContent(fileSpec);
         String type = fileSpec.getFileType();
-        if (p4HasTextFlag(type)) {
-            content = mungeKeyword(content);
+        byte[] content = null;
+        Properties properties = null;
+
+        if (!p42SVN.isReuseChangelist()) {
+            content = p4GetFileContent(fileSpec);
+            if (p4HasTextFlag(type)) {
+                content = mungeKeyword(content);
+            }
+            properties = properties(type, content);
         }
-        Properties properties = properties(type, content);
+
         if (type.contains("symlink")) {
             svnAddSymlink(fileSpec.getChangelistId(), svnPath, properties, content);
         } else {
@@ -398,12 +441,18 @@ public class SVNListener implements Listener {
     }
 
     private void p4EditToSVN(IFileSpec fileSpec, String svnPath) throws Exception {
-        byte[] content = p4GetFileContent(fileSpec);
         String type = fileSpec.getFileType();
-        if (p4HasTextFlag(type)) {
-            content = mungeKeyword(content);
+        byte[] content = null;
+        Properties properties = null;
+
+        if (!p42SVN.isReuseChangelist()) {
+            content = p4GetFileContent(fileSpec);
+            if (p4HasTextFlag(type)) {
+                content = mungeKeyword(content);
+            }
+            properties = properties(type, content);
         }
-        Properties properties = properties(type, content);
+
         if (type.contains("symlink")) {
             svnEditSymlink(fileSpec.getChangelistId(), svnPath, properties, content);
         } else {
@@ -412,6 +461,12 @@ public class SVNListener implements Listener {
     }
 
     private void p4BranchToSVN(IFileSpec fileSpec, String svnPath) throws Exception {
+        if (p42SVN.isReuseChangelist()) {
+            //For restore mode there is no difference in which way the file has been added
+            //This call p4AddToSVN will not affect resulting dump file
+            p4AddToSVN(fileSpec, svnPath);
+            return;
+        }
         IFileSpec fromFileSpec = p4GetCopyFromFileRevision(fileSpec);
         String fromSvnPath = fromFileSpec != null && fromFileSpec.getDepotPathString() != null ? getSVNPath(fromFileSpec.getDepotPathString()) : null;
         int fromChangeListId = fromFileSpec != null && fromFileSpec.getDepotPathString() != null ? fromFileSpec.getChangelistId() : 0;
@@ -426,6 +481,12 @@ public class SVNListener implements Listener {
     }
 
     private void p4IntegrateToSVN(IFileSpec fileSpec, String svnPath) throws Exception {
+        if (p42SVN.isReuseChangelist()) {
+            //For restore mode there is no difference in which way the file has been added
+            //This call p4EditToSVN will not affect resulting dump file
+            p4EditToSVN(fileSpec, svnPath);
+            return;
+        }
         IFileSpec fromFileSpec = p4GetCopyFromFileRevision(fileSpec);
         String fromSvnPath = fromFileSpec != null && fromFileSpec.getDepotPathString() != null ? getSVNPath(fromFileSpec.getDepotPathString()) : null;
         int fromChangeListId = fromFileSpec != null && fromFileSpec.getDepotPathString() != null ? fromFileSpec.getChangelistId() : 0;
@@ -449,8 +510,18 @@ public class SVNListener implements Listener {
 //=================================================================================================
 
     private static byte[] p4GetFileContent(IFileSpec filespec) {
+        //System.out.println(Thread.currentThread().getName() +": p4GetFileContent: "+filespec.getDepotPathString());
         try {
             return IOUtils.toByteArray(filespec.getContents(true));
+        } catch (RequestException re) {
+            if (re.toString().contains("No such file or directory")) {
+                re.printStackTrace();
+                String msgContentReplacement = "p42svn Import Error: Failed to get file contents, FileSpec: \n"
+                    + ToStringBuilder.reflectionToString(filespec) + "\nCaused by: " + re;
+                return msgContentReplacement.getBytes();
+            } else {
+                throw new RuntimeException(re);
+            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -461,7 +532,7 @@ public class SVNListener implements Listener {
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
         p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Add"));
-        if (file.exists()) {
+        if (p42SVN.isReuseChangelist()) {
             return;
         }
 
@@ -485,7 +556,7 @@ public class SVNListener implements Listener {
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
         p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Add"));
-        if (file.exists()) {
+        if (p42SVN.isReuseChangelist()) {
             return;
         }
 
@@ -533,7 +604,7 @@ public class SVNListener implements Listener {
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
         p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Edit"));
-        if (file.exists()) {
+        if (p42SVN.isReuseChangelist()) {
             return;
         }
 
@@ -578,7 +649,7 @@ public class SVNListener implements Listener {
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
         p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Delete"));
-        if (file.exists()) {
+        if (p42SVN.isReuseChangelist()) {
             return;
         }
         OutputStream outputStream = new FileOutputStream(file);
@@ -592,7 +663,7 @@ public class SVNListener implements Listener {
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
         p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Add Copy"));
-        if (file.exists()) {
+        if (p42SVN.isReuseChangelist()) {
             return;
         }
         OutputStream outputStream = new FileOutputStream(file);
@@ -611,7 +682,7 @@ public class SVNListener implements Listener {
                 String.valueOf(getAndInc(partByChangeListId, changeListId, 1))
         );
         p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(path, "Replace Copy"));
-        if (file.exists()) {
+        if (p42SVN.isReuseChangelist()) {
             return;
         }
         OutputStream outputStream = new FileOutputStream(file);
