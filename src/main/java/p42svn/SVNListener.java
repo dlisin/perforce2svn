@@ -797,6 +797,10 @@ public class SVNListener implements Listener {
         String fromFile = null;
         int fromRevision = 0;
         for (IFileSpec f : revisionHistory.keySet()) {
+            if (f == null || f.getDepotPathString() == null) {
+                System.out.println("p4GetCopyFromFileRevision Error incorrect FileSpec: " + Utils.fileSpecToString(f));
+                continue;
+            }
             if (f.getDepotPathString().equals(fileSpec.getDepotPathString())) {
                 List<IFileRevisionData> fileRevisionDataList = revisionHistory.get(f);
                 if (fileRevisionDataList.size() == 1) {
