@@ -66,6 +66,9 @@ public final class Utils {
     }
 
     public static String fileSpecToString(IFileSpec fileSpec) {
+        if (fileSpec == null) {
+            return "<null>";
+        }
         String params = "\nFileSpec props: " + new ToStringBuilder(fileSpec)
         .append("getBaseRev()", fileSpec.getBaseRev())
         .append("getEndFromRev()", fileSpec.getEndFromRev())
