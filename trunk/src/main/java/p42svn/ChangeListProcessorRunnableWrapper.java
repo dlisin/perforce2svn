@@ -20,7 +20,7 @@ public class ChangeListProcessorRunnableWrapper implements Runnable {
     public void run() {
         try {
             changeListProcessor.process();
-        } catch (ChangeListProcessorException e) {
+        } catch (Throwable e) {
             e.printStackTrace();
             System.exit(-1);
         } finally {

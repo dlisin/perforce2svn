@@ -1,58 +1,25 @@
 package p42svn;
 
-import static com.perforce.p4java.core.file.FileAction.ADD;
-import static com.perforce.p4java.core.file.FileAction.BRANCH;
-import static com.perforce.p4java.core.file.FileAction.DELETE;
-import static com.perforce.p4java.core.file.FileAction.EDIT;
-import static com.perforce.p4java.core.file.FileAction.INTEGRATE;
-import static com.perforce.p4java.core.file.FileAction.PURGE;
-import static p42svn.ConcurrentMapUtils.dec;
-import static p42svn.ConcurrentMapUtils.get;
-import static p42svn.ConcurrentMapUtils.getAndInc;
-import static p42svn.ConcurrentMapUtils.inc;
-import static p42svn.SVNUtils.svnPropertiesToString;
-
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.io.Reader;
-import java.io.Writer;
-import java.nio.ByteBuffer;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.TimeZone;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
+import com.perforce.p4java.core.IChangelist;
+import com.perforce.p4java.core.file.*;
+import com.perforce.p4java.exception.RequestException;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.perforce.p4java.core.IChangelist;
-import com.perforce.p4java.core.file.FileAction;
-import com.perforce.p4java.core.file.FileSpecBuilder;
-import com.perforce.p4java.core.file.IFileRevisionData;
-import com.perforce.p4java.core.file.IFileSpec;
-import com.perforce.p4java.core.file.IRevisionIntegrationData;
-import com.perforce.p4java.exception.RequestException;
+import java.io.*;
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import static com.perforce.p4java.core.file.FileAction.*;
+import static p42svn.ConcurrentMapUtils.*;
+import static p42svn.SVNUtils.svnPropertiesToString;
 
 /**
  * @author Pavel Belevich
@@ -68,14 +35,6 @@ public class SVNListener implements Listener {
         put("File", "HeadURL");
         put("Id", "Id");
     }};
-
-    public static final SimpleDateFormat SVN_DATE_FORMAT;
-
-    static {
-        SVN_DATE_FORMAT =
-                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'.000000Z'");
-        SVN_DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("GMT"));
-    }
 
     private P42SVN p42SVN;
 
@@ -127,7 +86,11 @@ public class SVNListener implements Listener {
 
         properties.put("svn:log", description);
         properties.put("svn:author", changeList.getUsername());
-        properties.put("svn:date", SVN_DATE_FORMAT.format(changeList.getDate()));
+
+        SimpleDateFormat svnDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'.000000Z'");
+        svnDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+
+        properties.put("svn:date", svnDateFormat.format(changeList.getDate()));
         writeSVNRevision(changelistDumpDir, properties,
                 p42SVN.getRevisionManager().getRevisionIdForChangeListId(changeList.getId()));
     }
@@ -171,7 +134,7 @@ public class SVNListener implements Listener {
             } else {
                 throw new FileProcessorException("Unknown action");
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new FileProcessorException(Utils.fileSpecToString(fileSpec), e);
         }
     }
@@ -242,7 +205,10 @@ public class SVNListener implements Listener {
         Properties properties = new Properties();
         properties.put("svn:log", "Deleting Empty Parent Directories");
         properties.put("svn:author", "p42svn");
-        properties.put("svn:date", SVN_DATE_FORMAT.format(new Date()));
+
+        SimpleDateFormat svnDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'.000000Z'");
+        svnDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+        properties.put("svn:date", svnDateFormat.format(new Date()));
         writeSVNRevision(changeListDumpDir, properties, svnRevision);
 
         int fileNumber = 0;
