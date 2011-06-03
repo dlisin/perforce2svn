@@ -49,7 +49,7 @@ public class ChangeListProcessor {
             } else {
                 p42SVN.getRevisionManager().skipRevisionIdForChangeListId(changeList.getId());
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new ChangeListProcessorException(e);
         }
     }
