@@ -49,7 +49,7 @@ public class P4 {
         this.clientName = clientName;
     }
 
-    public IServer getServer(boolean check) throws P4Exception {
+    public synchronized IServer getServer(boolean check) throws P4Exception {
         try {
             if (server == null) {
                 server = ServerFactory.getServer(serverUriString, null);
