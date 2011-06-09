@@ -475,8 +475,7 @@ public class SVNListener implements Listener {
 
 //=================================================================================================
 
-    private static byte[] p4GetFileContent(IFileSpec filespec) {
-        //System.out.println(Thread.currentThread().getName() +": p4GetFileContent: "+filespec.getDepotPathString());
+    private byte[] p4GetFileContent(IFileSpec filespec) {
         try {
             return IOUtils.toByteArray(filespec.getContents(true));
         } catch (RequestException re) {
@@ -489,7 +488,15 @@ public class SVNListener implements Listener {
                 throw new RuntimeException(re);
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            try {
+                e.printStackTrace();
+                System.out.println("Trying to reconnect...");
+                p42SVN.getP4().getServer(true);
+                return IOUtils.toByteArray(filespec.getContents(true));
+            } catch (Exception e1) {
+                e1.printStackTrace();
+                throw new RuntimeException(e1);
+            }
         }
     }
 
@@ -788,7 +795,7 @@ public class SVNListener implements Listener {
         return fromFileSpec;
     }
 
-    private static boolean p4FilesAreIdentical(IFileSpec srcfilespec, IFileSpec destFilespec) {
+    private boolean p4FilesAreIdentical(IFileSpec srcfilespec, IFileSpec destFilespec) {
         return ByteBuffer.wrap(p4GetFileContent(srcfilespec)).equals(
                 ByteBuffer.wrap(p4GetFileContent(destFilespec)));
     }
