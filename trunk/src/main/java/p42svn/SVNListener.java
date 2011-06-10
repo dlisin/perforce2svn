@@ -480,7 +480,6 @@ public class SVNListener implements Listener {
             return IOUtils.toByteArray(filespec.getContents(true));
         } catch (RequestException re) {
             if (re.toString().contains("No such file or directory")) {
-                re.printStackTrace();
                 String msgContentReplacement = "p42svn Import Error: Failed to get file contents, FileSpec: \n"
                     + ToStringBuilder.reflectionToString(filespec) + "\nCaused by: " + re;
                 return msgContentReplacement.getBytes();
@@ -489,12 +488,12 @@ public class SVNListener implements Listener {
             }
         } catch (Exception e) {
             try {
-                e.printStackTrace();
+                e.printStackTrace(System.out);
                 System.out.println("Trying to reconnect...");
                 p42SVN.getP4().getServer(true);
                 return IOUtils.toByteArray(filespec.getContents(true));
             } catch (Exception e1) {
-                e1.printStackTrace();
+                e1.printStackTrace(System.out);
                 throw new RuntimeException(e1);
             }
         }
