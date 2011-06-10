@@ -204,12 +204,12 @@ public class Main {
                     if (dump) p42SVN.dumpChangeLists();
                     if (assemble) p42SVN.assembleDumpFile();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    e.printStackTrace(System.out);
                 }
             }
         } catch (Exception exp) {
             System.out.println("Unexpected exception:" + exp.getMessage());
-            exp.printStackTrace();
+            exp.printStackTrace(System.out);
         }
     }
 

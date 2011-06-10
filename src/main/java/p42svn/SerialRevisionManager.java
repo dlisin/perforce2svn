@@ -82,7 +82,7 @@ public class SerialRevisionManager implements RevisionManager {
                     try {
                         condition1.await();
                     } catch (InterruptedException e) {
-                        e.printStackTrace();  //TODO Warning!
+                        e.printStackTrace(System.out);  //TODO Warning!
                     }
                 }
                 changeListsQueue.poll();
@@ -118,7 +118,7 @@ public class SerialRevisionManager implements RevisionManager {
                     try {
                         condition2.await();
                     } catch (InterruptedException e) {
-                        e.printStackTrace();  //TODO Warning!
+                        e.printStackTrace(System.out);  //TODO Warning!
                     }
                 }
                 revisionId = revisionByChangeListId.get(changeListId);

@@ -21,7 +21,7 @@ public class ChangeListProcessorRunnableWrapper implements Runnable {
         try {
             changeListProcessor.process();
         } catch (Throwable e) {
-            e.printStackTrace();
+            e.printStackTrace(System.out);
             System.exit(-1);
         } finally {
             cdl.countDown();
