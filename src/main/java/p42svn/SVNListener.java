@@ -2,6 +2,7 @@ package p42svn;
 
 import com.perforce.p4java.core.IChangelist;
 import com.perforce.p4java.core.file.*;
+import com.perforce.p4java.exception.ConnectionException;
 import com.perforce.p4java.exception.RequestException;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -486,7 +487,7 @@ public class SVNListener implements Listener {
             } else {
                 throw new RuntimeException(re);
             }
-        } catch (Exception e) {
+        } catch (ConnectionException e) {
             try {
                 e.printStackTrace(System.out);
                 System.out.println("Trying to reconnect...");
@@ -496,6 +497,8 @@ public class SVNListener implements Listener {
                 e1.printStackTrace(System.out);
                 throw new RuntimeException(e1);
             }
+        } catch (Exception e3) {
+            throw new RuntimeException(e3);
         }
     }
 
@@ -789,7 +792,14 @@ public class SVNListener implements Listener {
             }
         }
         if (fromFile != null && fromRevision != 0) {
-            fromFileSpec = p42SVN.getP4().getServer().getDepotFiles(FileSpecBuilder.makeFileSpecList(fromFile + "#" + fromRevision), true).get(0);
+            try {
+                fromFileSpec = p42SVN.getP4().getServer().getDepotFiles(FileSpecBuilder.makeFileSpecList(fromFile + "#" + fromRevision), true).get(0);
+            } catch (ConnectionException e) {
+                e.printStackTrace(System.out);
+                System.out.println("Trying to reconnect...");
+                p42SVN.getP4().getServer(true);
+                fromFileSpec = p42SVN.getP4().getServer().getDepotFiles(FileSpecBuilder.makeFileSpecList(fromFile + "#" + fromRevision), true).get(0);
+            }
         }
         return fromFileSpec;
     }
