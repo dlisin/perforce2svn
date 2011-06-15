@@ -218,6 +218,7 @@ public class SVNListener implements Listener {
             OutputStream outputStream = new FileOutputStream(file);
             PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, p42SVN.getCharset()));
             SVNUtils.svnDelete(printWriter, deletedFile);
+            outputStream.close();
             p42SVN.getFilesManager().getFiles().put(file, new ChangeInfo(deletedFile, "Delete"));
         }
     }
