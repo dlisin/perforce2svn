@@ -356,7 +356,10 @@ public class SVNListener implements Listener {
                 }
 
                 if (allow) {
-                    byte[] bytes = IOUtils.toByteArray(new FileInputStream(partFile));
+                    FileInputStream fis = new FileInputStream(partFile);
+                    byte[] bytes = IOUtils.toByteArray(fis);
+                    fis.close();
+
                     outputStream.write(bytes);
                     outputStream.flush();
                 }
