@@ -482,7 +482,12 @@ public class SVNListener implements Listener {
 
     private byte[] p4GetFileContent(IFileSpec filespec) {
         try {
-            return IOUtils.toByteArray(filespec.getContents(true));
+            InputStream is = filespec.getContents(true);
+            try {
+                return IOUtils.toByteArray(is);
+            } finally {
+                IOUtils.closeQuietly(is);
+            }
         } catch (RequestException re) {
             if (re.toString().contains("No such file or directory")) {
                 String msgContentReplacement = "p42svn Import Error: Failed to get file contents, FileSpec: \n"
